@@ -23,7 +23,7 @@ class CustomButton(QPushButton):
         self.setStyleSheet("color: {}; background-color: {}; border-radius: 10px;".format(color.name(), QColor(75, 63, 127).name()))
 
 class WebBrowser(QMainWindow):
-    def __init__(self, urls):
+    def __init__(self, urls, games):
         super().__init__()
 
         self.setWindowTitle("URL Columns")
@@ -36,12 +36,15 @@ class WebBrowser(QMainWindow):
         # Set dark background color
         main_widget.setStyleSheet("background-color: #ffffff;")
 
-        # Create a splitter to divide the window into two columns
+        # Create a splitter to divide the window into columns
         splitter = QSplitter()
         layout.addWidget(splitter)
 
+        self.columns = []  # Store the column widgets
+        round = 2
+
         # Open URLs in columns
-        for url in urls:
+        for i, url in enumerate(urls):
             # Create a new column widget
             column_widget = QWidget()
             column_layout = QVBoxLayout(column_widget)
@@ -54,13 +57,7 @@ class WebBrowser(QMainWindow):
             web_view.load(QUrl(url))
 
             # Inject CSS for dark mode
-            script = """
-            var css = 'body.ytd-app { background-color: #212121 !important; color: #212121 !important; }';
-            var style = document.createElement('style');
-            style.appendChild(document.createTextNode(css));
-            document.head.appendChild(style);
-            """
-            web_view.page().runJavaScript(script)
+            self.dark_theme(web_view)
 
             column_layout.addWidget(web_view)
 
@@ -69,11 +66,38 @@ class WebBrowser(QMainWindow):
             column_layout.addWidget(button, alignment=Qt.AlignHCenter)
 
             # Connect button clicked signal to confirmation prompt
-            button.clicked.connect(lambda checked, btn=button: self.confirmation_prompt(btn))
+            button.clicked.connect(lambda checked, btn=button, game=games[i]: self.confirmation_prompt(btn, game, round))
 
             splitter.addWidget(column_widget)
 
-    def confirmation_prompt(self, button):
+            self.columns.append(column_widget)
+
+    def reload_columns(self, games,round):
+        for i, column_widget in enumerate(self.columns):
+            column_layout = column_widget.layout()
+            web_view = column_layout.itemAt(0).widget()
+            button = column_layout.itemAt(1).widget()
+
+            # Update the game for the button
+            button.clicked.disconnect()  # Disconnect previous signal
+            button.clicked.connect(lambda checked, btn=button, game=games[i]: self.confirmation_prompt(btn, game, 2))
+
+            # Reload the web view with the updated URL
+            url = "https://www.youtube.com/results?search_query=" + games[i * 2]
+            web_view.load(QUrl(url))
+
+    def dark_theme(self, web_view):
+        script = """
+            var css = 'body.ytd-app { background-color: #212121 !important; color: #212121 !important; }';
+            var style = document.createElement('style');
+            style.appendChild(document.createTextNode(css));
+            document.head.appendChild(style);
+            """
+        web_view.page().runJavaScript(script)
+
+
+
+    def confirmation_prompt(self, button, chosen_game, round):
         msg_box = QMessageBox(self)
         msg_box.setWindowTitle("Confirmation")
         msg_box.setText("Are you sure you want to choose this option?")
@@ -88,7 +112,12 @@ class WebBrowser(QMainWindow):
         msg_box.move(msg_box_pos)
 
         if msg_box.exec_() == QMessageBox.Yes:
-            print("Option chosen")
+            print("Option chosen:", chosen_game)
+
+            with open(f"round_{round}.txt", "a") as file:
+                file.write(chosen_game + "\n")
         else:
             print("Option not chosen")
+
+        
 
