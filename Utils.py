@@ -11,8 +11,8 @@ class CustomButton(QPushButton):
     def __init__(self, text):
         super().__init__(text)
 
-        self.setFixedHeight(40)
-        self.setFixedWidth(120)
+        self.setFixedHeight(60)
+        self.setFixedWidth(300)
 
         font = self.font()
         font.setPointSize(12)
@@ -72,7 +72,7 @@ class WebBrowser(QMainWindow):
 
             self.columns.append(column_widget)
 
-    def reload_columns(self, games,round):
+    def reload_columns(self, games, round):
         for i, column_widget in enumerate(self.columns):
             column_layout = column_widget.layout()
             web_view = column_layout.itemAt(0).widget()
@@ -80,13 +80,17 @@ class WebBrowser(QMainWindow):
 
             # Update the game for the button
             button.clicked.disconnect()  # Disconnect previous signal
-            button.clicked.connect(lambda checked, btn=button, game=games[i]: self.confirmation_prompt(btn, game, 2))
+            button.clicked.connect(lambda checked, btn=button, game=games[i]: self.confirmation_prompt(btn, game, round))
 
             # Reload the web view with the updated URL
-            url = "https://www.youtube.com/results?search_query=" + games[i * 2]
-            web_view.load(QUrl(url))
+            url = "https://www.youtube.com/results?search_query=" + games[i + 2]
+            web_view.setUrl(QtCore.QUrl(url))
+
 
     def dark_theme(self, web_view):
+        """
+        Injects CSS code to apply a dark theme to the web view.
+        """
         script = """
             var css = 'body.ytd-app { background-color: #212121 !important; color: #212121 !important; }';
             var style = document.createElement('style');
@@ -95,9 +99,11 @@ class WebBrowser(QMainWindow):
             """
         web_view.page().runJavaScript(script)
 
-
-
     def confirmation_prompt(self, button, chosen_game, round):
+        """
+        Displays a confirmation prompt when a button is clicked.
+        Writes the chosen game to a file if confirmed.
+        """
         msg_box = QMessageBox(self)
         msg_box.setWindowTitle("Confirmation")
         msg_box.setText("Are you sure you want to choose this option?")
@@ -114,10 +120,24 @@ class WebBrowser(QMainWindow):
         if msg_box.exec_() == QMessageBox.Yes:
             print("Option chosen:", chosen_game)
 
+            # Write the chosen game to a file
             with open(f"round_{round}.txt", "a") as file:
                 file.write(chosen_game + "\n")
         else:
             print("Option not chosen")
 
-        
+# Main entry point
+if __name__ == '__main__':
+    # Create a PyQt application
+    app = QApplication(sys.argv)
 
+    # URLs and games data
+    urls = ['https://example.com/url1', 'https://example.com/url2']
+    games = ['Game 1', 'Game 2']
+
+    # Create an instance of the WebBrowser and show the window
+    web_browser = WebBrowser(urls, games)
+    web_browser.show()
+
+    # Start the application event loop
+    sys.exit(app.exec_())
