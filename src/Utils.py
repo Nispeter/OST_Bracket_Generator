@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSp
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtCore import QUrl, Qt, QPoint
 from PyQt5.QtGui import QColor, QPainter, QBrush
-
+##hi
 class CustomButton(QPushButton):
     def __init__(self, text):
         super().__init__(text)

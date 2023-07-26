@@ -42,7 +42,7 @@ def print_tree(node,level):
         print_tree(node.r, level+1)  
 
 
-with open("output.txt", "r") as file:
+with open("../output/output.txt", "r") as file:
     games= file.readlines()
 
 #games = ['a','b','c','d','e','f','g','h']
