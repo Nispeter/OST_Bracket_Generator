@@ -1,12 +1,10 @@
 import sys
 import os
 import random
-import Utils
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSplitter, QPushButton, QDesktopWidget, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QMessageBox
 from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtCore import QUrl, Qt, QPoint
-from PyQt5.QtGui import QColor, QPainter, QBrush
-##hi
+from PyQt5.QtCore import QUrl, Qt
+
 class CustomButton(QPushButton):
     def __init__(self, text):
         super().__init__(text)
@@ -19,125 +17,125 @@ class CustomButton(QPushButton):
         font.setBold(True)
         self.setFont(font)
 
-        color = QColor(255, 255, 255)
-        self.setStyleSheet("color: {}; background-color: {}; border-radius: 10px;".format(color.name(), QColor(75, 63, 127).name()))
+        self.setStyleSheet("color: white; background-color: #4b3f7f; border-radius: 10px;")
+
 
 class WebBrowser(QMainWindow):
-    def __init__(self, urls, games):
+    def __init__(self, games):
         super().__init__()
 
-        self.setWindowTitle("URL Columns")
+        self.setWindowTitle("Video Game Music Tournament")
 
-        # Create a main widget and layout
-        main_widget = QWidget(self)
-        self.setCentralWidget(main_widget)
-        layout = QVBoxLayout(main_widget)
+        self.centralWidget = QWidget(self)  # Create a central widget to hold columns
+        self.setCentralWidget(self.centralWidget)
 
-        # Set dark background color
-        main_widget.setStyleSheet("background-color: #ffffff;")
+        self.main_layout = QVBoxLayout(self.centralWidget)  # Main layout to hold rounds
 
-        # Create a splitter to divide the window into columns
-        splitter = QSplitter()
-        layout.addWidget(splitter)
+        self.games = games  # Store the list of games
+        self.current_game1 = 0  # Initialize the index for the first game
+        self.current_game2 = 1  # Initialize the index for the second game
 
-        self.columns = []  # Store the column widgets
-        round = 2
+        # Open URLs for the first round
+        self.load_round()
 
-        # Open URLs in columns
-        for i, url in enumerate(urls):
-            # Create a new column widget
-            column_widget = QWidget()
-            column_layout = QVBoxLayout(column_widget)
+    def load_round(self):
+        # Clear the current round layout
+        while self.main_layout.count() > 0:
+            item = self.main_layout.takeAt(0)
+            if item:
+                widget = item.widget()
+                if widget:
+                    widget.setParent(None)
 
-            # Set dark background color for column widget
-            column_widget.setStyleSheet("background-color: #ffffff;")
+        # Check if there are at least two games remaining
+        if self.current_game2 < len(self.games):
+            round_layout = QHBoxLayout()  # Create a layout for each round
 
-            # Create a web view for the URL
-            web_view = QWebEngineView()
-            web_view.load(QUrl(url))
+            # Create a new round with the next pair of games
+            # Create a new round with the next pair of games
+            game1 = self.games[self.current_game1].strip()
+            game2 = self.games[self.current_game2].strip()
 
-            # Inject CSS for dark mode
-            self.dark_theme(web_view)
+            urls = [f"https://www.youtube.com/results?search_query={game1}", f"https://www.youtube.com/results?search_query={game2}"]
 
-            column_layout.addWidget(web_view)
+            for url, game in zip(urls, [game1, game2]):
+                column_widget = QWidget()
+                column_layout = QVBoxLayout(column_widget)
+                column_widget.setStyleSheet("background-color: #ffffff;")
 
-            # Create a button for the column
-            button = CustomButton("Choose")
-            column_layout.addWidget(button, alignment=Qt.AlignHCenter)
+                web_view = QWebEngineView()
+                web_view.load(QUrl(url))
 
-            # Connect button clicked signal to confirmation prompt
-            button.clicked.connect(lambda checked, btn=button, game=games[i]: self.confirmation_prompt(btn, game, round))
+                column_layout.addWidget(web_view)
 
-            splitter.addWidget(column_widget)
+                button = CustomButton(game)  # Set the game name as the button text
+                button.clicked.connect(self.on_choose_button_clicked)  # Connect the button click event
+                column_layout.addWidget(button, alignment=Qt.AlignHCenter)
 
-            self.columns.append(column_widget)
+                round_layout.addWidget(column_widget)
 
-    def reload_columns(self, games, round):
-        for i, column_widget in enumerate(self.columns):
-            column_layout = column_widget.layout()
-            web_view = column_layout.itemAt(0).widget()
-            button = column_layout.itemAt(1).widget()
+            self.main_layout.addLayout(round_layout)
 
-            # Update the game for the button
-            button.clicked.disconnect()  # Disconnect previous signal
-            button.clicked.connect(lambda checked, btn=button, game=games[i]: self.confirmation_prompt(btn, game, round))
-
-            # Reload the web view with the updated URL
-            url = "https://www.youtube.com/results?search_query=" + games[i + 2]
-            web_view.setUrl(QtCore.QUrl(url))
-
-
-    def dark_theme(self, web_view):
-        """
-        Injects CSS code to apply a dark theme to the web view.
-        """
-        script = """
-            var css = 'body.ytd-app { background-color: #212121 !important; color: #212121 !important; }';
-            var style = document.createElement('style');
-            style.appendChild(document.createTextNode(css));
-            document.head.appendChild(style);
-            """
-        web_view.page().runJavaScript(script)
-
-    def confirmation_prompt(self, button, chosen_game, round):
-        """
-        Displays a confirmation prompt when a button is clicked.
-        Writes the chosen game to a file if confirmed.
-        """
-        msg_box = QMessageBox(self)
-        msg_box.setWindowTitle("Confirmation")
-        msg_box.setText("Are you sure you want to choose this option?")
-        msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        msg_box.setDefaultButton(QMessageBox.No)
-
-        # Calculate the position of the message box
-        button_pos = button.mapToGlobal(button.rect().topLeft())
-        msg_box_height = msg_box.sizeHint().height()
-        msg_box_pos = button_pos - self.pos() - QPoint(0, msg_box_height)
-
-        msg_box.move(msg_box_pos)
-
-        if msg_box.exec_() == QMessageBox.Yes:
-            print("Option chosen:", chosen_game)
-
-            # Write the chosen game to a file
-            with open(f"round_{round}.txt", "a") as file:
-                file.write(chosen_game + "\n")
+    def on_choose_button_clicked(self):
+        # Determine the winner based on which button was clicked
+        if chosen_game == self.games[self.current_game1].strip():
+            winner_index = self.current_game1
+            loser_index = self.current_game2
         else:
-            print("Option not chosen")
+            winner_index = self.current_game2
+            loser_index = self.current_game1
 
-# Main entry point
+        winner_game = self.games[winner_index].strip()
+
+        # Display the chosen winner (for debugging purposes)
+        print("Winner Game:", winner_game)
+
+        # Write the winner to the "round_1.txt" file
+        with open("../output/round_1.txt", "a") as file:
+            file.write(winner_game + "\n")
+
+        # Increment the game indices by 2 to load the next pair of games
+        self.current_game1 += 2
+        self.current_game2 += 2
+
+        # Load the next round with the new pair of games
+        self.load_round()
+        
+        
+    def on_choose_button_clicked(self):
+        # Determine the winner based on which button was clicked
+        if self.sender().text() == "Choose":
+            winner_index = self.current_game1
+            loser_index = self.current_game2
+        else:
+            winner_index = self.current_game2
+            loser_index = self.current_game1
+
+        winner_game = self.games[winner_index].strip()
+
+        # Write the winner to the "round_1.txt" file
+        with open("../output/round_1.txt", "a") as file:
+            file.write(winner_game + "\n")
+
+        # Increment the game indices by 2 to load the next pair of games
+        self.current_game1 += 2
+        self.current_game2 += 2
+
+        # Load the next round with the new pair of games
+        self.load_round()
+        
 if __name__ == '__main__':
+    # Read the game names from a file and shuffle them
+    with open("../output/output.txt", "r") as file:
+        games = file.readlines()
+    random.shuffle(games)
+
     # Create a PyQt application
     app = QApplication(sys.argv)
 
-    # URLs and games data
-    urls = ['https://example.com/url1', 'https://example.com/url2']
-    games = ['Game 1', 'Game 2']
-
     # Create an instance of the WebBrowser and show the window
-    web_browser = WebBrowser(urls, games)
-    web_browser.show()
+    web_browser = WebBrowser(games)
+    web_browser.showMaximized()
 
     # Start the application event loop
     sys.exit(app.exec_())

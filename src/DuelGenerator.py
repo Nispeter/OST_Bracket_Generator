@@ -9,13 +9,13 @@ from PyQt5.QtGui import QColor, QPainter, QBrush
 
 
 # get lines on game file and shuffle 
-with open("output.txt", "r") as file:
+with open("../output/output.txt", "r") as file:
     lines = file.readlines()
 
 random.shuffle(lines)
 
 # Overwrite output.txt with shuffled lines
-with open("round_1.txt", "w") as file:
+with open("../output/round_1.txt", "w") as file:
     file.writelines(lines)
 
 app = QApplication(sys.argv)
